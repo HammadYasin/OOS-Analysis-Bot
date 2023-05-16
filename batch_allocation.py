@@ -3,7 +3,7 @@ import numpy as np
 import os
 from datetime import datetime
 
-path = r'D:\Ascend\Analytics_Use_Cases\OOS-Analysis-Bot'
+path = r'C:\Users\YasinHammad(Ascend)\Desktop\OOS-Analysis-Bot'
 os.chdir(path)
 
 batch_details = pd.read_excel('batch_details.xlsx').dropna()
