@@ -6,15 +6,15 @@ from datetime import datetime
 path = r'C:\Users\YasinHammad(Ascend)\Desktop\OOS-Analysis-Bot'
 os.chdir(path)
 
-batch_details = pd.read_excel('batch_details.xlsx').dropna()
-onhand_report = pd.read_excel('onhand_report.xlsx')
+batch_details = pd.read_excel('batch_details_processed.xlsx').dropna()
+stock_consumption = pd.read_excel('stock_consumption.xlsx')
 
 batches_df = batch_details.copy()
 
-batches_dfg = batches_df.groupby(['item_id', 'region_id'])['quantity'].sum().reset_index()
-inventory_df = onhand_report.merge(batches_dfg, on = ['item_id', 'region_id'], how = 'right')
-inventory_df['total_stock'] = inventory_df['main_store_stock'] + inventory_df['sub_store_stock']
-inventory_df['used_quantity'] = inventory_df['quantity'] - inventory_df['total_stock']
+batches_dfg = batches_df.groupby(['item_id', 'region_id'])['available_quantity'].sum().reset_index()
+inventory_df = stock_consumption.merge(batches_dfg, on = ['item_id', 'region_id'], how = 'right')
+inventory_df['total_stock'] = inventory_df['overstock']
+inventory_df['used_quantity'] = inventory_df['available_quantity'] - inventory_df['total_stock']
 inventory_df['used_quantity'] = np.where(inventory_df['used_quantity'] < 0, 0, inventory_df['used_quantity'])
 
 
@@ -33,8 +33,8 @@ for group_name, group_df in batches_grouped:
     group_df['dispensed_quantity'] = 0
     for index, row in group_df.iterrows():
         if used_quantity >= row['quantity']:
-            group_df.at[index, 'dispensed_quantity'] = row['quantity']
-            used_quantity -= row['quantity']
+            group_df.at[index, 'dispensed_quantity'] = row['available_quantity']
+            used_quantity -= row['available_quantity']
         else:
             group_df.at[index, 'dispensed_quantity'] = used_quantity
             used_quantity = 0
@@ -43,9 +43,11 @@ for group_name, group_df in batches_grouped:
     batches_df.loc[(batches_df['item_id'] == group_name[0]) & (batches_df['region_id'] == group_name[1]), 'dispensed_quantity'] = group_df['dispensed_quantity'].values
     print(i)
     i += 1
-batches_df['available_quantity'] = batches_df['quantity'] - batches_df['dispensed_quantity']
+    if i == 5:
+        break
+batches_df['overstock_quantity'] = batches_df['available_quantity'] - batches_df['dispensed_quantity']
 batches_df = batches_df.drop('dispensed_quantity', axis = 1)
 # print the result
 # for index, row in batches_df.iterrows():
 #     print(f"Batch {row['batch_id']}: {row['available_quantity']} remaining")
-batches_df.to_excel('batch_details_processed.xlsx', index = False)
+batches_df.to_excel('batch_details_processed_ovs.xlsx', index = False)
